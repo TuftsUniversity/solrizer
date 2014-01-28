@@ -53,7 +53,7 @@ options = {
   :multiple=>false,
   :dir_mode=>:normal,
   :dir=>'/tmp',
-  :backtrace=>true
+  :backtrace=>true,
   :log_output=>true
 }
 argv_array = []
