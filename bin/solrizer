@@ -93,27 +93,23 @@ begin
 
         if @msg.body == "heartbeat the topic"
           st = ActiveRecord::Base.connection.execute("update message_queues set last_heartbeat=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
-          st.close
         end
 
 
         puts @msg.headers.inspect
         puts "\nPID: #{@msg.headers["pid"]}\n"
+        begin
         if ["addDatastream", "addRelationship","ingest","modifyDatastreamByValue","modifyDatastreamByReference","modifyObject","purgeDatastream","purgeRelationship"].include? method
           if ["addDatastream", "addRelationship","modifyDatastreamByValue","modifyDatastreamByReference","modifyObject","purgeDatastream","purgeRelationship"].include? method
 
             escaped_pid = ActiveRecord::Base.connection.quote(@msg.headers["pid"])
             st = ActiveRecord::Base.connection.execute("update message_queues set last_pid_modified=\"" + escaped_pid + "\" where name=\"fedora.apim.update\"")
-            st.close
             st = ActiveRecord::Base.connection.execute("update message_queues set last_modify=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
-            st.close
           end
           if ["ingest"].include? method
             escaped_pid = ActiveRecord::Base.connection.quote(@msg.headers["pid"])
             st = ActiveRecord::Base.connection.execute("update message_queues set last_pid_ingested=\"" + escaped_pid + "\" where name=\"fedora.apim.update\"")
-            st.close
             st = ActiveRecord::Base.connection.execute("update message_queues set last_ingest=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
-            st.close
           end
 
           ActiveFedora::Base.find(@msg.headers["pid"], cast: true).update_index
@@ -121,19 +117,29 @@ begin
 
           escaped_pid = ActiveRecord::Base.connection.quote(@msg.headers["pid"])
           st = ActiveRecord::Base.connection.execute("update message_queues set last_pid_purged=\"" + escaped_pid + "\" where name=\"fedora.apim.update\"")
-          st.close
           st = ActiveRecord::Base.connection.execute("update message_queues set last_purge=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
-          st.close
 
 
           ActiveFedora::SolrService.instance.conn.delete_by_id(pid)
         else
           $stderr.puts "Unknown Method: #{method}"
         end
+#Stomp::Error::MessageIDRequiredError
+        rescue ActiveFedora::ObjectNotFoundError
+          @conn.ack @msg.headers["message-id"]
+          @conn.publish "/topic/post.index.update", @msg.body, @msg.headers
+        rescue Stomp::Error::MessageIDRequiredError
+          next
+        end
+   
         puts  "updated solr index for #{@msg.headers["pid"]}\n"
+        begin
         @conn.ack @msg.headers["message-id"]
         # once a message has been ack'd rerack it
         @conn.publish "/topic/post.index.update", @msg.body, @msg.headers
+        rescue Stomp::Error::MessageIDRequiredError
+         next
+        end
       end #end unless @msg.nil?
  
       #debug information we find useful in logging
