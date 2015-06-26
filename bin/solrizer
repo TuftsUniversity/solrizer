@@ -91,11 +91,6 @@ begin
         pid = @msg.headers["pid"]
         method = @msg.headers["methodName"]
 
-        if @msg.body == "heartbeat the topic"
-          st = ActiveRecord::Base.connection.execute("update message_queues set last_heartbeat=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
-        end
-
-
         puts @msg.headers.inspect
         puts "\nPID: #{@msg.headers["pid"]}\n"
         begin
@@ -103,21 +98,15 @@ begin
           if ["addDatastream", "addRelationship","modifyDatastreamByValue","modifyDatastreamByReference","modifyObject","purgeDatastream","purgeRelationship"].include? method
 
             escaped_pid = ActiveRecord::Base.connection.quote(@msg.headers["pid"])
-            st = ActiveRecord::Base.connection.execute("update message_queues set last_pid_modified=\"" + escaped_pid + "\" where name=\"fedora.apim.update\"")
-            st = ActiveRecord::Base.connection.execute("update message_queues set last_modify=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
           end
           if ["ingest"].include? method
             escaped_pid = ActiveRecord::Base.connection.quote(@msg.headers["pid"])
-            st = ActiveRecord::Base.connection.execute("update message_queues set last_pid_ingested=\"" + escaped_pid + "\" where name=\"fedora.apim.update\"")
-            st = ActiveRecord::Base.connection.execute("update message_queues set last_ingest=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
           end
 
           ActiveFedora::Base.find(@msg.headers["pid"], cast: true).update_index
         elsif method == "purgeObject"
 
           escaped_pid = ActiveRecord::Base.connection.quote(@msg.headers["pid"])
-          st = ActiveRecord::Base.connection.execute("update message_queues set last_pid_purged=\"" + escaped_pid + "\" where name=\"fedora.apim.update\"")
-          st = ActiveRecord::Base.connection.execute("update message_queues set last_purge=\""+Time.now.to_s+"\" where name=\"fedora.apim.update\"")
 
 
           ActiveFedora::SolrService.instance.conn.delete_by_id(pid)
