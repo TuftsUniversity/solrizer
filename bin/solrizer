@@ -114,13 +114,15 @@ begin
           $stderr.puts "Unknown Method: #{method}"
         end
 #Stomp::Error::MessageIDRequiredError
-        rescue ActiveFedora::ObjectNotFoundError
+       rescue NoMethodError
+        puts "No Method Error"
+        next
+      rescue ActiveFedora::ObjectNotFoundError
           @conn.ack @msg.headers["message-id"]
           @conn.publish "/topic/post.index.update", @msg.body, @msg.headers
         rescue Stomp::Error::MessageIDRequiredError
           next
         end
-   
         puts  "updated solr index for #{@msg.headers["pid"]}\n"
         begin
         @conn.ack @msg.headers["message-id"]
