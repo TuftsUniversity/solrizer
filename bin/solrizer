@@ -102,6 +102,11 @@ begin
         rescue Nokogiri::XML::XPath::SyntaxError
           next
         rescue ActiveFedora::ObjectNotFoundError
+#Stomp::Error::MessageIDRequiredError
+       rescue NoMethodError
+        puts "No Method Error"
+        next
+      rescue ActiveFedora::ObjectNotFoundError
           @conn.ack @msg.headers["message-id"]
           @conn.publish "/topic/post.index.update", @msg.body, @msg.headers
         rescue Stomp::Error::MessageIDRequiredError
